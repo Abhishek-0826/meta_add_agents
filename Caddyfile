@@ -1,0 +1,9 @@
+# Replace with your real domain. Caddy handles Let's Encrypt automatically.
+:80 {
+    reverse_proxy api:8000
+}
+
+# Once you have a domain pointed at this server, switch to:
+# yourdomain.com {
+#     reverse_proxy api:8000
+# }

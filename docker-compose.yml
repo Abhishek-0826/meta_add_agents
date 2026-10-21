@@ -1,0 +1,64 @@
+version: "3.9"
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  api:
+    build: .
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+    env_file: .env
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    # Uncomment to expose directly without Caddy during local dev:
+    ports:
+      - "8000:8000"
+
+  worker:
+    build: .
+    command: python -m app.worker.run_worker
+    env_file: .env
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    # LLM calls are the bottleneck, not CPU — one worker process is enough at v1 scale.
+    deploy:
+      replicas: 1
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: adpilot
+      POSTGRES_PASSWORD: adpilot
+      POSTGRES_DB: adpilot
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # Comment out if you already have your own managed Postgres (you mentioned DB is done):
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+ 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  caddy_data:
